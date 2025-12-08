@@ -1,0 +1,27 @@
+[
+  {
+    "storage_path": "mongodb://localhost:27017/aegisense_dataset/raw_logs/6931b016a2890e4ad39b3138",
+    "log_hash": "fbb56e82dbc0e0777689ada5bdbb3f53f95db1682f9fd59341d20d9375cee2ea",
+    "doc_id": "6931b016a2890e4ad39b3138"
+  },
+  {
+    "storage_path": "mongodb://localhost:27017/aegisense_dataset/raw_logs/6931b016a2890e4ad39b3139",
+    "log_hash": "19fb360d6bd95300cd470a7316df99d322a4c74e901168064f6c98e2227bbbeb",
+    "doc_id": "6931b016a2890e4ad39b3139"
+  },
+  {
+    "storage_path": "mongodb://localhost:27017/aegisense_dataset/raw_logs/6931b016a2890e4ad39b313a",
+    "log_hash": "66fd9f310892a4a087fc472cb6c431d50f8759f8efe29c1dd1952337a6ae2e50",
+    "doc_id": "6931b016a2890e4ad39b313a"
+  },
+  {
+    "storage_path": "mongodb://localhost:27017/aegisense_dataset/raw_logs/6931b016a2890e4ad39b313b",
+    "log_hash": "cc6d3481ddb2ca7cf79e405810f0ce9270bf99db62c00c2bb439049bd7ccc2ce",
+    "doc_id": "6931b016a2890e4ad39b313b"
+  },
+  {
+    "storage_path": "mongodb://localhost:27017/aegisense_dataset/raw_logs/6931b016a2890e4ad39b313c",
+    "log_hash": "c27fea5b259a1bc237f148dbff579914e30adae837a3c163022786948320a882",
+    "doc_id": "6931b016a2890e4ad39b313c"
+  }
+]
