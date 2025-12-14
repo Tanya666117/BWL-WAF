@@ -1,9 +1,9 @@
 # 🛡️ AegisSense
 
-### Intelligent WAF/IDS Log Noise-Reduction & Security Alert Analysis Console
+### Log Storage Based on ChainMaker & Intelligent WAF Log Integrity and Analysis
 
-> **AegisSense** 是一个融合机器学习与规则引擎的智能告警分析控制台，
-> 旨在为 WAF/IDS 系统提供“低误报、可解释、可校准”的安全日志降噪与可视化能力。
+> **AegisSense** 是一个基于长安链和机器学习的WAF日志存证分析框架，
+> 旨在为 WAF 系统提供“防篡改、低误报、可解释、可校准”的安全日志降噪与可视化能力。
 
 ---
 
@@ -13,6 +13,8 @@
 | ------------ | ----------------------------------------------------------------------------------- |
 | `backend/`   | FastAPI 后端服务（模型打分、批量预测、阈值校准、趋势分析）                                                   |
 | `frontend/`  | React + TypeScript 前端控制台（在线预测、批量评估、PR曲线、可视化）                                        |
+| `HashCaculating/` | 哈希值计算及元数据封存 |
+| `AegisSense_Contract/` |基于go语言的合约文件 |
 | `scorer.py`  | 智能降噪引擎：融合 ML 模型 + 规则系统 + 流量与拓扑感知                                                    |
 | `api.py`     | FastAPI 主服务：提供 `/predict`, `/batch_predict`, `/calibrate`, `/meta`, `/overview` 等接口 |
 | `static/`    | 存放校准生成的 `pr_curve_api.png`、`pr_points_api.csv` 等产物                                  |
