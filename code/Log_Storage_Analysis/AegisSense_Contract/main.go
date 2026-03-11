@@ -6,6 +6,8 @@ import (
 	"chainmaker/sdk"
 	"encoding/json"
 	"log"
+	"strconv"
+	"strings"
 )
 
 // AegisSenseLogContract 日志存证合约结构体
@@ -23,15 +25,20 @@ func (a *AegisSenseLogContract) InitContract() protogo.Response {
 	return sdk.Success([]byte("AegisSense批量日志合约初始化成功"))
 }
 
+// MaxBatchSize 单次批量上链条数上限，避免单笔交易过大；evidence_full_data.json 需分批调用 AddBatchLog
+const MaxBatchSize = 2000
+
 // InvokeContract 方法分发入口
 func (a *AegisSenseLogContract) InvokeContract(method string) protogo.Response {
 	switch method {
-	case "AddBatchLog": // 批量上链方法（读取JSON中所有日志）
+	case "AddBatchLog": // 批量上链（传入 evidence_full_data.json 的数组或子数组，可多次调用覆盖全量）
 		return a.AddBatchLog()
-	case "AddLog": // 单条上链方法（兼容之前逻辑）
+	case "AddLog": // 单条上链（兼容旧逻辑）
 		return a.AddLog()
-	case "QueryLogByDocId": // 单条查询方法
+	case "QueryLogByDocId": // 按 doc_id 查询
 		return a.QueryLogByDocId()
+	case "QueryLogByLogHash": // 按 log_hash 查询
+		return a.QueryLogByLogHash()
 	default:
 		return sdk.Error("无效的合约方法")
 	}
@@ -42,62 +49,57 @@ func (a *AegisSenseLogContract) UpgradeContract() protogo.Response {
 	return sdk.Success([]byte("AegisSense批量日志合约升级成功"))
 }
 
-// AddBatchLog 核心方法：接收`evidence_full_data.json`的日志数组，批量上链
+// AddBatchLog 核心方法：接收 evidence_full_data.json 的日志数组（或子数组），批量上链；全量文件需分批调用（每批不超过 MaxBatchSize 条）
 func (a *AegisSenseLogContract) AddBatchLog() protogo.Response {
-	// 1. 获取批量日志参数（`batch_logs`对应JSON文件的日志数组字符串）
 	args := sdk.Instance.GetArgs()
-	batchLogsStr := string(args["batch_logs"])
+	batchLogsStr := strings.TrimSpace(string(args["batch_logs"]))
 	if batchLogsStr == "" {
-		msg := "批量日志参数（batch_logs）不能为空"
-		sdk.Instance.Infof(msg)
-		return sdk.Error(msg)
+		return sdk.Error("批量日志参数（batch_logs）不能为空")
 	}
 
-	// 2. 将日志数组字符串反序列化为[]LogData
 	var batchLogs []LogData
-	err := json.Unmarshal([]byte(batchLogsStr), &batchLogs)
-	if err != nil {
-		msg := "批量日志反序列化失败: " + err.Error()
-		sdk.Instance.Infof(msg)
-		return sdk.Error(msg)
+	if err := json.Unmarshal([]byte(batchLogsStr), &batchLogs); err != nil {
+		return sdk.Error("批量日志反序列化失败: " + err.Error())
 	}
 
-	// 3. 循环处理每条日志，逐一上链
+	if len(batchLogs) > MaxBatchSize {
+		return sdk.Error("单次上链条数不能超过 " + strconv.Itoa(MaxBatchSize) + "，当前 " + strconv.Itoa(len(batchLogs)) + " 条，请分批调用 AddBatchLog")
+	}
+
 	successCount := 0
 	for idx, logData := range batchLogs {
-		// 3.1 单条日志参数校验
 		if logData.DocId == "" || logData.LogHash == "" || logData.StoragePath == "" {
-			msg := "第" + string(idx+1) + "条日志参数为空（doc_id/log_hash/storage_path）"
-			sdk.Instance.Infof(msg)
-			continue // 跳过无效日志，继续处理其他日志
+			sdk.Instance.Infof("第%s条日志参数为空，跳过", strconv.Itoa(idx+1))
+			continue
 		}
 
-		// 3.2 序列化单条日志为JSON字符串
 		logJson, err := json.Marshal(logData)
 		if err != nil {
-			msg := "第" + string(idx+1) + "条日志序列化失败: " + err.Error()
-			sdk.Instance.Infof(msg)
+			sdk.Instance.Infof("第%s条日志序列化失败: %v", strconv.Itoa(idx+1), err)
 			continue
 		}
 
-		// 3.3 以doc_id为键，存储到链上（避免重复）
-		err = sdk.Instance.PutStateFromKey(logData.DocId, string(logJson))
-		if err != nil {
-			msg := "第" + string(idx+1) + "条日志上链失败: " + err.Error()
-			sdk.Instance.Infof(msg)
+		if err = sdk.Instance.PutStateFromKey(logData.DocId, string(logJson)); err != nil {
+			sdk.Instance.Infof("第%s条日志上链失败: %v", strconv.Itoa(idx+1), err)
 			continue
+		}
+
+		// 建立 log_hash -> doc_id 索引，便于按哈希查询
+		hashKey := "hash:" + logData.LogHash
+		if err = sdk.Instance.PutStateFromKey(hashKey, logData.DocId); err != nil {
+			sdk.Instance.Infof("第%s条日志哈希索引写入失败: %v", strconv.Itoa(idx+1), err)
+			// 主数据已写入，不因索引失败回滚
 		}
 
 		successCount++
 		sdk.Instance.Infof("第%d条日志上链成功 | doc_id: %s", idx+1, logData.DocId)
 	}
 
-	// 4. 返回批量处理结果
-	resultMsg := "批量日志处理完成 | 成功上链: " + string(successCount) + "条 | 总数: " + string(len(batchLogs))
+	resultMsg := "批量日志处理完成 | 成功上链: " + strconv.Itoa(successCount) + "条 | 本批总数: " + strconv.Itoa(len(batchLogs))
 	return sdk.Success([]byte(resultMsg))
 }
 
-// AddLog 单条日志上链（兼容之前逻辑）
+// AddLog 单条日志上链（兼容之前逻辑，同时写入哈希索引以支持按 log_hash 查询）
 func (a *AegisSenseLogContract) AddLog() protogo.Response {
 	args := sdk.Instance.GetArgs()
 	docId := string(args["doc_id"])
@@ -105,27 +107,25 @@ func (a *AegisSenseLogContract) AddLog() protogo.Response {
 	storagePath := string(args["storage_path"])
 
 	if docId == "" || logHash == "" || storagePath == "" {
-		msg := "单条日志参数不能为空"
-		sdk.Instance.Infof(msg)
-		return sdk.Error(msg)
+		return sdk.Error("单条日志参数不能为空（doc_id/log_hash/storage_path）")
 	}
 
 	logData := LogData{DocId: docId, LogHash: logHash, StoragePath: storagePath}
 	logJson, _ := json.Marshal(logData)
-	err := sdk.Instance.PutStateFromKey(docId, string(logJson))
-	if err != nil {
+	if err := sdk.Instance.PutStateFromKey(docId, string(logJson)); err != nil {
 		return sdk.Error("单条日志上链失败: " + err.Error())
 	}
+	_ = sdk.Instance.PutStateFromKey("hash:"+logHash, docId)
 
 	return sdk.Success([]byte("单条日志上链成功 | doc_id: " + docId))
 }
 
-// QueryLogByDocId 按doc_id查询日志
+// QueryLogByDocId 按 doc_id 查询单条日志
 func (a *AegisSenseLogContract) QueryLogByDocId() protogo.Response {
 	args := sdk.Instance.GetArgs()
-	docId := string(args["doc_id"])
+	docId := strings.TrimSpace(string(args["doc_id"]))
 	if docId == "" {
-		return sdk.Error("查询参数doc_id不能为空")
+		return sdk.Error("查询参数 doc_id 不能为空")
 	}
 
 	logJson, err := sdk.Instance.GetStateFromKey(docId)
@@ -133,9 +133,28 @@ func (a *AegisSenseLogContract) QueryLogByDocId() protogo.Response {
 		return sdk.Error("日志查询失败: " + err.Error())
 	}
 	if logJson == "" {
-		return sdk.Error("未找到该doc_id的日志: " + docId)
+		return sdk.Error("未找到该 doc_id 的日志: " + docId)
+	}
+	return sdk.Success([]byte(logJson))
+}
+
+// QueryLogByLogHash 按 log_hash 查询单条日志（通过哈希索引找到 doc_id 再取完整记录）
+func (a *AegisSenseLogContract) QueryLogByLogHash() protogo.Response {
+	args := sdk.Instance.GetArgs()
+	logHash := strings.TrimSpace(string(args["log_hash"]))
+	if logHash == "" {
+		return sdk.Error("查询参数 log_hash 不能为空")
 	}
 
+	docId, err := sdk.Instance.GetStateFromKey("hash:" + logHash)
+	if err != nil || docId == "" {
+		return sdk.Error("未找到该 log_hash 对应的存证: " + logHash)
+	}
+
+	logJson, err := sdk.Instance.GetStateFromKey(docId)
+	if err != nil || logJson == "" {
+		return sdk.Error("按 doc_id 读取日志失败: " + docId)
+	}
 	return sdk.Success([]byte(logJson))
 }
 
