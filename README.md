@@ -99,11 +99,11 @@ npm run dev
 
 ### 前端界面预览
 
-![](./code/static/dashboard_preview.png)
+![](./code/Log_Storage_Analysis/static/dashboard_preview.png)
 
 ### PR 曲线样例
 
-![](./code/static/pr_curve_api.png)
+![](./code/Log_Storage_Analysis/pr_curve_api.png)
 
 ---
 
