@@ -1,8 +1,8 @@
-# 🛡️ AegisSense
+# 🛡️ BWL-WAF:A Framework Based on Blockchain and Machine Learning for Web Application Firewall Log Integrity and Analysis
 
 ### Log Storage Based on ChainMaker & Intelligent WAF Log Integrity and Analysis
 
-> **AegisSense** 是一个基于长安链和机器学习的WAF日志存证分析框架，
+> **BWL-WAF** 是一个基于长安链和机器学习的WAF日志存证分析框架，
 > 旨在为 WAF 系统提供“防篡改、低误报、可解释、可校准”的安全日志降噪与可视化能力。
 
 ---
@@ -163,10 +163,5 @@ AegisSense 采用“三层融合模型”实现日志判定：
 
 ---
 
-## 🤝 开源协议
 
-MIT License © 2025 **A1LinLin1**
-
-> “In the ocean of alerts, AegisSense guards the signal.”
-> 在告警的海洋中，AegisSense 守护真正的信号。
 
