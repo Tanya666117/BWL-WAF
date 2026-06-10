@@ -103,7 +103,7 @@ npm run dev
 
 ### PR 曲线样例
 
-![](./code/Log_Storage_Analysis/pr_curve_api.png)
+![](./code/Log_Storage_Analysis/static/pr_curve_api.png)
 
 ---
 
